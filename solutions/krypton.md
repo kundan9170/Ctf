@@ -1,70 +1,90 @@
 # Krypton — Crypto (levels 0 → 6)
 
 **Connect:** `ssh kryptonN@krypton.labs.overthewire.org -p 2231`
-Files live under `/krypton/kryptonN/`. Each level decrypts a file to reveal the
-next level's password.
+Files live under **`/krypton/kryptonN/`** (absolute path at the filesystem root —
+NOT your home dir, which only holds `.bashrc`/`.profile`). As user `kryptonN`
+you can read the `/krypton/kryptonN/` folder only.
 
-> Levels 1–6 need the live ciphertext files on the server (SSH port 2231),
-> which my sandbox can't reach. Methods + exact commands below; Level 0 is
-> solved outright.
+**Tool:** all decoding uses the tested solver at
+[`../scripts/krypton.py`](../scripts/krypton.py). Copy it to the box (or just
+paste the ciphertext to me). It reads ciphertext on **stdin**.
+
+> Krypton passwords are **static** (same for everyone), unlike Natas which
+> rotate — so the confirmed answers below are real. My sandbox can't SSH to the
+> server, so levels needing your specific file: `cat` it and pipe to the tool.
 
 ---
 
-## Level 0 → 1  ✅ solved offline
-The site gives the level-1 password base64-encoded: `S1JZUFRPTklTR1JFQVQ=`.
+## Level 0 → 1  ✅ SOLVED
+Site gives the level-1 password base64-encoded.
 ```bash
 echo "S1JZUFRPTklTR1JFQVQ=" | base64 -d; echo
 ```
-**krypton1 password = `KRYPTONISGREAT`**
+**→ krypton1 password = `KRYPTONISGREAT`**
 
-## Level 1 → 2  (ROT13)
-`krypton2` file is ROT13-encoded.
+## Level 1 → 2  ✅ SOLVED (ROT13)
+`/krypton/krypton1/krypton2` contains `YRIRY GJB CNFFJBEQ EBGGRA`.
 ```bash
-cat /krypton/krypton1/krypton2 | tr 'A-Za-z' 'N-ZA-Mn-za-m'
+cat /krypton/krypton1/krypton2 | python3 krypton.py rot13
+# LEVEL TWO PASSWORD ROTTEN
 ```
+**→ krypton2 password = `ROTTEN`**
 
-## Level 2 → 3  (Caesar cipher)
-`krypton3` is a Caesar shift. Read `README`/`keyfile` in `/krypton/krypton2/`.
-Easiest path — brute-force all 26 shifts and eyeball the English one:
+## Level 2 → 3  (Caesar) — THE FIXED ONE
+The old `tr`/`sed` brute-forcer was broken. Use the solver — it prints all 26
+shifts **and auto-picks the English one**:
 ```bash
-CT=$(cat /krypton/krypton2/krypton3)
-for k in $(seq 0 25); do
-  echo -n "$k: "; echo "$CT" | tr \
-    "$(echo {A..Z} | tr -d ' ')" \
-    "$(echo {A..Z} | tr -d ' ' | sed "s/.\{$k\}/&\n/" | tac | tr -d '\n')" 2>/dev/null
-  echo
-done
-# Or use the provided encrypt binary with a known-plaintext to derive the shift.
+cat /krypton/krypton2/krypton3 | python3 krypton.py caesar
 ```
-(The intended keyed route: make a working dir in `/tmp`, symlink the keyfile,
-and run the setuid `encrypt` binary to recover the shift.)
+The `>>> best guess:` line at the bottom is your plaintext. The decoded text
+spells out the level-3 password in the clear (it reads like
+`...THE PASSWORD IS <WORD>`).
+
+If you want the single shift once you know it (e.g. 21):
+```bash
+cat /krypton/krypton2/krypton3 | python3 krypton.py caesar --key 21
+```
+> **Paste me the `krypton3` file contents and I'll return the exact password.**
 
 ## Level 3 → 4  (monoalphabetic substitution → frequency analysis)
-You get `krypton4` plus `found1..3` (extra ciphertext samples for frequency
-counts). Break with frequency analysis / an automatic solver:
+You also get `found1..3` (extra ciphertext for better letter counts). Get the
+frequency table, then finish on quipqiup:
 ```bash
-cat /krypton/krypton3/krypton4          # copy the ciphertext out
-# paste into https://quipqiup.com  (auto-solves substitution)
-# or count letters: fold -w1 | sort | uniq -c | sort -rn
+cat /krypton/krypton3/krypton4 /krypton/krypton3/found* | python3 krypton.py freq
+# map most-common cipher letter -> E, etc.  Then:
+#   paste krypton4 ciphertext into https://quipqiup.com  (auto-solves)
 ```
+> Paste me the `krypton4` ciphertext (and `found*` if you have them) and I'll
+> break the substitution here.
 
 ## Level 4 → 5  (Vigenère, short key)
-`krypton5` is Vigenère-encrypted; `found1`/`found2` help find the key length.
+`found1`/`found2` help find the key length (Kasiski / index of coincidence).
+Once you have the key, decode:
 ```bash
-cat /krypton/krypton4/krypton5
-# key length via Kasiski/IC, then key via https://www.dcode.fr/vigenere-cipher
+cat /krypton/krypton4/krypton5 | python3 krypton.py vigenere --key <KEY>
 ```
+Finding the key: paste the ciphertext into
+<https://www.dcode.fr/vigenere-cipher> (automatic mode) — or send it to me.
 
 ## Level 5 → 6  (Vigenère, longer key)
-Same technique as 4→5, just a longer key — let the solver auto-detect.
+Same method, longer key — let the solver auto-detect:
 ```bash
-cat /krypton/krypton5/krypton6
-# https://www.dcode.fr/vigenere-cipher  (automatic / known-key mode)
+cat /krypton/krypton5/krypton6 | python3 krypton.py vigenere --key <KEY>
 ```
+> Paste me `krypton6` (plus `found*`) and I'll recover the key + plaintext.
 
 ---
-### Quick reference
-- **ROT13:** `tr 'A-Za-z' 'N-ZA-Mn-za-m'`
-- **Caesar:** brute 26 shifts, pick readable output
-- **Substitution:** frequency analysis → quipqiup
-- **Vigenère:** Kasiski for key length → dcode.fr for the key
+## Confirmed so far
+| Level | Password | Method |
+|-------|----------|--------|
+| krypton1 | `KRYPTONISGREAT` | base64 |
+| krypton2 | `ROTTEN` | ROT13 |
+| krypton3 | *(run Caesar solver / paste ciphertext)* | Caesar |
+| krypton4 | *(paste ciphertext)* | substitution |
+| krypton5 | *(paste ciphertext)* | Vigenère |
+| krypton6 | *(paste ciphertext)* | Vigenère |
+
+## The solver
+`scripts/krypton.py` modes: `rot13`, `caesar [--key N]`, `vigenere --key WORD`,
+`freq`. Reads stdin. Tested against known inputs (ROT13, Caesar shift-3,
+Vigenère round-trip) — all pass.

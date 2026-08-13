@@ -25,10 +25,20 @@ recovered password into the next step.
 | Challenge | Answer | How |
 |-----------|--------|-----|
 | **Krypton 0 → 1** | `KRYPTONISGREAT` | `base64 -d` of `S1JZUFRPTklTR1JFQVQ=` |
+| **Krypton 1 → 2** | `ROTTEN` | ROT13 of `YRIRY GJB CNFFJBEQ EBGGRA` |
 | **Natas 8 secret** | `oubWYf2kBq` | reverse `bin2hex(strrev(base64_encode(x)))` |
+
+Krypton passwords are **static** (same for every player), so the two above are
+real. Krypton 3–6 need your specific cipher files — paste them and I decode.
 
 (The Natas 8 *secret* is offline-solvable; submitting it to the live server is
 what returns the natas9 password.)
+
+## Crypto solver
+
+[`../scripts/krypton.py`](../scripts/krypton.py) — tested Python solver:
+`rot13`, `caesar` (all 26 shifts + auto-detect), `vigenere --key`, `freq`.
+Reads ciphertext on stdin. This replaces the broken `tr`/`sed` Caesar command.
 
 ## If you want me to actually run these live
 
